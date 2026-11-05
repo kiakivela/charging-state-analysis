@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 import aerosol.functions as af
 import matplotlib.pyplot as plt
+import aerosol.lab as al
 
-ds = xr.open_dataset(r"C:\Users\kivekia\Downloads\Python\beijing_all.nc")
+ds = xr.open_dataset("/home/kivekia/Python/beijing_all.nc")
 
 ds = ds.sortby('time')
 
@@ -42,7 +43,7 @@ dp_nm = np.arange(1, 101)*1e-9
 dp_nm_2 = dp_nm*1e9
 N1 = 300
 
-df = pd.read_excel(r"C:\Users\kivekia\Downloads\Python\BUCT DMPS 2018-2022\BUCT DMPS 2018-2022\DMPS_BUCT_to_D.xlsx",
+df = pd.read_excel("/home/kivekia/Python/BUCT DMPS 2018-2022/BUCT DMPS 2018-2022/DMPS_BUCT_to_D.xlsx",
                     index_col=0,
                     parse_dates=True
                     )
@@ -58,7 +59,7 @@ coagS_med = np.nanmedian(coagS, axis=0)
 
 f_eq_1 = pd.Series(
     {
-        diameter: af.eq_charge_frac(diameter, -1)
+        diameter: al.eq_charge_frac(diameter, -1)
         for diameter in dp_nm
     }
 )
