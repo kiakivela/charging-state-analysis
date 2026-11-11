@@ -1,5 +1,6 @@
 # Scientific datasets
 *.nc
+*.xlsx
 
 # Images
 *.png
@@ -23,3 +24,12 @@ env/
 # Temporary files
 *.tmp
 *.log
+
+# Certain files and folders
+"BSc Thesis"/
+"BUCT DMPS 2018-2022/BUCT DMPS 2018-2022"/
+Labs/
+"Other Courses"/
+"BUCT DMPS 2018-2022.zip"
+aerosol_function_tests.py
+hyytiala.py
