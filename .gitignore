@@ -26,10 +26,10 @@ env/
 *.log
 
 # Certain files and folders
-"BSc Thesis"/
-"BUCT DMPS 2018-2022/BUCT DMPS 2018-2022"/
+BSc Thesis/
+BUCT DMPS 2018-2022/BUCT DMPS 2018-2022/
 Labs/
-"Other Courses"/
-"BUCT DMPS 2018-2022.zip"
+Other Courses/
+BUCT DMPS 2018-2022.zip
 aerosol_function_tests.py
 hyytiala.py
