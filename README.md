@@ -1,18 +1,18 @@
 # charging-state-analysis
 
-One or two sentences: what problem this solves and for whom.
+Different codes that can be used to analyze data, charged fractions and charging states.
 
 ## Requirements
-Language version, key dependencies.
+Python 3.14.4 with aerosol-functions and pandas installed
 
 ## Usage
-Minimal example showing how to run it.
+Replace the paths to datasets with your own ones and run the code.
 
 ## Data
-What input it expects. Do not commit large or sensitive data.
+The code expects aerosol size distribution data, either as .nc or .xlsx
 
 ## Author and contact
-Name, years active, how to cite (if applicable).
+Kia Kivelä, active for less than 1 year, email: kia.kivela@helsinki.fi
 
 ## License
-State the license; keep the LICENSE file in the repo root.
+MIT
