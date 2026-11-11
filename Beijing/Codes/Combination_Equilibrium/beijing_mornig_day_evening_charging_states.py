@@ -16,15 +16,6 @@ ds = xr.open_dataset("/home/kivekia/Python/beijing_all.nc")
 
 ds = ds.sortby('time')
 
-dmps_df = pd.read_excel("/home/kivekia/Python/DMPS_BUCT_to_D_concentration.xlsx",
-                        index_col=0,
-                        parse_dates=True)
-
-dmps_df.index = (
-    dmps_df.index
-    .tz_localize("UTC")
-    .tz_convert("Asia/Shanghai"))
-
 negp_og=ds["neg_particles"]
 negi_og=ds["neg_ions"]
 
@@ -54,19 +45,23 @@ neg_i.columns = neg_i.columns.astype(float)
 neg_p.index = neg_p.index.tz_localize("UTC").tz_convert("Asia/Shanghai")
 neg_i.index = neg_i.index.tz_localize("UTC").tz_convert("Asia/Shanghai")
 
-# ============================================================
-# INTERPOLATE DMPS TO NAIS 10-MINUTE TIME RESOLUTION
-# ============================================================
+# Preserve the complete original NAIS particle distribution
+neg_p_nais_original = neg_p.copy()
 
-# Remove duplicate timestamps if present
+dmps_df = pd.read_excel("/home/kivekia/Python/DMPS_BUCT_to_D_concentration.xlsx",
+                        index_col=0,
+                        parse_dates=True)
+
+dmps_df.index = (
+    dmps_df.index
+    .tz_localize("UTC")
+    .tz_convert("Asia/Shanghai"))
+
 dmps_df = dmps_df[
-    ~dmps_df.index.duplicated(keep="first")
-]
+    ~dmps_df.index.duplicated(keep="first")]
 
-# Sort time
 dmps_df = dmps_df.sort_index()
 
-# Interpolate hourly DMPS data to the NAIS timestamps
 dmps_10min = dmps_df.reindex(
     neg_p.index.union(dmps_df.index)
 ).sort_index()
@@ -76,42 +71,30 @@ dmps_10min = dmps_10min.interpolate(
     limit_area="inside"
 )
 
-# Keep only the NAIS timestamps
 dmps_10min = dmps_10min.reindex(neg_p.index)
 
-# ============================================================
-# COMBINE NAIS (<10 nm) AND DMPS (10–40 nm)
-# ============================================================
-
-# NAIS diameter columns are in meters
 nais_diameters_nm = neg_p.columns.astype(float) * 1e9
 
-# Select NAIS diameters below 10 nm
 nais_below_10 = neg_p.loc[
     :, nais_diameters_nm < 10
 ].copy()
 
-# DMPS columns are assumed to be in nm
 dmps_diameters_nm = dmps_10min.columns.astype(float)
 
-# Select DMPS diameters between 10 and 40 nm
 dmps_10_40 = dmps_10min.loc[
     :, (dmps_diameters_nm >= 10) &
        (dmps_diameters_nm <= 40)
 ].copy()
 
-# Convert DMPS diameter columns from nm to meters
 dmps_10_40.columns = (
     dmps_10_40.columns.astype(float) * 1e-9
 )
 
-# Combine
 combined = pd.concat(
     [nais_below_10, dmps_10_40],
     axis=1
 )
 
-# Sort by diameter
 combined = combined.reindex(
     sorted(combined.columns),
     axis=1
@@ -147,95 +130,100 @@ df_hourly = df_hourly.loc[
     ~df_hourly.index.duplicated(keep="first")
 ]
 
+neg_p_nais_hourly = (
+    neg_p_nais_original
+    .resample("1h")
+    .median()
+    .dropna(how="all")
+)
+
 common_index = (
     neg_i_hourly.index
     .intersection(neg_p_hourly.index)
+    .intersection(neg_p_nais_hourly.index)
     .intersection(df_hourly.index)
 )
 
-# ============================================================
-# ALIGN NAIS IONS WITH COMBINED NAIS + DMPS PARTICLES
-# ============================================================
-
-# Original NAIS ion concentrations
 neg_i_nais = neg_i_hourly.loc[common_index].copy()
-
-# Combined particle concentrations
-neg_p = neg_p_hourly.loc[common_index].copy()
-
-# DMPS coagulation data
+neg_p_nais = neg_p_nais_hourly.loc[common_index].copy()
 df = df_hourly.loc[common_index].copy()
 
-# Source diameter grid: NAIS ions (meters)
-ion_dp = neg_i_nais.columns.to_numpy(dtype=float)
 
-# Target diameter grid: combined particles (meters)
-particle_dp = neg_p.columns.to_numpy(dtype=float)
+# NAIS diameter grid (metres)
+nais_dp = neg_i_nais.columns.to_numpy(dtype=float)
 
-# Sort NAIS ion diameters
-sort_idx = np.argsort(ion_dp)
+# DMPS diameter grid (convert nm to metres)
+dmps_dp = df.columns.to_numpy(dtype=float) * 1e-9
 
-ion_dp = ion_dp[sort_idx]
+# Sort DMPS diameters
+sort_idx = np.argsort(dmps_dp)
 
-neg_i_nais = neg_i_nais.iloc[:, sort_idx]
+dmps_dp = dmps_dp[sort_idx]
+df = df.iloc[:, sort_idx]
 
-# Convert diameters to logarithmic scale
-log_ion_dp = np.log10(ion_dp)
-log_particle_dp = np.log10(particle_dp)
-
-# Initialize ion dataframe on the particle diameter grid
-neg_i_aligned = pd.DataFrame(
+# Create DMPS data on the NAIS diameter grid
+dmps_aligned = pd.DataFrame(
     np.nan,
-    index=neg_p.index,
-    columns=particle_dp
+    index=common_index,
+    columns=nais_dp
 )
 
-# Keep original NAIS ion values below 10 nm
-nais_mask = particle_dp < 10e-9
-
-neg_i_aligned.loc[:, nais_mask] = (
-    neg_i_nais.reindex(
-        columns=particle_dp[nais_mask]
-    )
-)
-
-# DMPS diameter range: 10–40 nm
+# Only replace NAIS particle measurements between 10 and 40 nm
 dmps_mask = (
-    (particle_dp >= 10e-9) &
-    (particle_dp <= 40e-9)
+    (nais_dp >= 10e-9) &
+    (nais_dp <= 40e-9)
 )
 
-# Interpolate NAIS ions onto DMPS diameters
-for timestamp in neg_i_nais.index:
+log_dmps_dp = np.log10(dmps_dp)
+log_nais_dp = np.log10(nais_dp)
 
-    ion_values = neg_i_nais.loc[timestamp].to_numpy(
-        dtype=float
-    )
+for timestamp in common_index:
 
-    # Ignore missing ion measurements
-    valid = np.isfinite(ion_values)
+    dmps_values = df.loc[timestamp].to_numpy(dtype=float)
+
+    valid = np.isfinite(dmps_values)
 
     if valid.sum() < 2:
         continue
 
-    # Interpolate in log diameter
     interpolated = np.interp(
-        log_particle_dp[dmps_mask],
-        log_ion_dp[valid],
-        ion_values[valid],
+        log_nais_dp[dmps_mask],
+        log_dmps_dp[valid],
+        dmps_values[valid],
         left=np.nan,
         right=np.nan
     )
 
-    neg_i_aligned.loc[
+    dmps_aligned.loc[
         timestamp,
-        particle_dp[dmps_mask]
+        nais_dp[dmps_mask]
     ] = interpolated
 
-# Use aligned ions from now on
-neg_i = neg_i_aligned.copy()
+# Start with original NAIS particle measurements
+combined = neg_p_nais.copy()
+
+# Replace 10–40 nm with interpolated DMPS measurements
+combined.loc[:, dmps_mask] = (
+    dmps_aligned.loc[:, dmps_mask]
+)
+
+neg_p = combined.copy()
+
+# Keep original NAIS ions
+neg_i = neg_i_nais.copy()
 
 df.columns = df.columns.astype(float) * 1e-9
+
+# Use the original NAIS diameter grid for charging states
+dp_nm = neg_i_nais.columns.to_numpy(dtype=float)
+dp_nm_2 = dp_nm * 1e9
+
+# Particle and ion concentrations on identical NAIS diameters
+neg_p_charge = neg_p.copy()
+neg_i_charge = neg_i.copy()
+
+neg_i_charge[neg_i_charge < 0] = np.nan
+neg_p_charge[neg_p_charge < 0] = np.nan
 
 coagN = af.calc_coags(df, dp_nm)
 coagS = ((1+1.5/np.sqrt(dp_nm_2)-4/(dp_nm_2+2)**2)*coagN)
@@ -245,8 +233,8 @@ N = af.calc_conc(neg_i, 0.0, 1.6e-9).squeeze()
 #neg_p = neg_p.loc[:, neg_p.columns <= 11e-9]
 #neg_i = neg_i.loc[:, neg_i.columns <= 11e-9]
 
-neg_p = neg_p.loc[:, neg_p.columns >= 2.5e-9]
-neg_i = neg_i.loc[:, neg_i.columns >= 2.5e-9]
+neg_p_charge = neg_p_charge.loc[:, neg_p_charge.columns >= 2.5e-9]
+neg_i_charge = neg_i_charge.loc[:, neg_i_charge.columns >= 2.5e-9]
 
 concentrations = af.calc_conc_interp(neg_p, 4e-9, 6e-9).squeeze()
 
@@ -254,8 +242,8 @@ threshold = 1315
 
 mask = concentrations > threshold
 
-neg_p_masked = neg_p.copy()
-neg_i_masked = neg_i.copy()
+neg_p_masked = neg_p_charge.copy()
+neg_i_masked = neg_i_charge.copy()
 
 neg_p_masked[~mask] = np.nan
 neg_i_masked[~mask] = np.nan
@@ -273,9 +261,13 @@ a = 1.6e-6
 d0 = 1e-9
 a0 = 0.006e-6
 l = 1.2
-dp_nm = np.array(neg_p.columns, dtype=float)
+#dp_nm = np.array(neg_p.columns, dtype=float)
 
 f_meas = neg_i_masked / neg_p_masked
+
+print(f_meas.isna().mean() * 100)
+
+dp_nm = neg_p_charge.columns.to_numpy(dtype=float)
 
 f_eq_1 = pd.Series(
     {
@@ -292,7 +284,7 @@ f_eq_2 = pd.Series(
 )
 
 f_eq_3 = pd.DataFrame(
-    index=neg_p.index,
+    index=neg_p_charge.index,
     columns=dp_nm,
     dtype=float
 )
@@ -351,7 +343,8 @@ evening = (
     .median(axis=0)
 )
 
-diam_nm = np.array(neg_p.columns, dtype=float)
+diam_nm = np.array(neg_i.columns, dtype=float)
+
 
 fig, ax1 = plt.subplots(figsize=(8, 5))
 
