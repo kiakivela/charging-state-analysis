@@ -45,10 +45,11 @@ dmps_df = pd.read_excel("/home/kivekia/Python/DMPS_BUCT_to_D_concentration.xlsx"
                         index_col=0,
                         parse_dates=True)
 
-dmps_df.index = (
-    dmps_df.index
-    .tz_localize("UTC")
-    .tz_convert("Asia/Shanghai"))
+# DMPS timestamps are already Beijing local time
+dmps_df.index = pd.to_datetime(dmps_df.index)
+
+if dmps_df.index.tz is None:
+    dmps_df.index = dmps_df.index.tz_localize("Asia/Shanghai")
 
 dmps_df = dmps_df[
     ~dmps_df.index.duplicated(keep="first")]
@@ -112,7 +113,11 @@ df = pd.read_excel("/home/kivekia/Python/BUCT DMPS 2018-2022/BUCT DMPS 2018-2022
                     parse_dates=True
                     )
 
-df.index = df.index.tz_localize("UTC").tz_convert("Asia/Shanghai")
+# DMPS timestamps are already Beijing local time
+df.index = pd.to_datetime(df.index)
+
+if df.index.tz is None:
+    df.index = df.index.tz_localize("Asia/Shanghai")
 
 # Change the index to 1-hour intervals
 neg_i_raw = neg_i.copy()

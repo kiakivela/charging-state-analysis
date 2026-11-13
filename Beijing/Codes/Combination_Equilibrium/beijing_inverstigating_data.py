@@ -192,7 +192,7 @@ im = ax.pcolormesh(
     daily_median.T,
     shading="auto",
     cmap="coolwarm",
-    norm=LogNorm(vmin=10, vmax=1e5)
+    norm=LogNorm(vmin=100, vmax=1e5)
 )
 
 fig.colorbar(im, ax=ax, label="Particle concentration")
@@ -200,6 +200,7 @@ fig.colorbar(im, ax=ax, label="Particle concentration")
 ax.set_yscale("log")
 ax.set_ylabel("Particle diameter (nm)")
 ax.set_xlabel("Date")
+
 
 ax.set_title("Combined NAIS + DMPS distribution")
 
