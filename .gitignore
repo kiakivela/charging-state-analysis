@@ -2,6 +2,7 @@
 *.nc
 *.xlsx
 *.grib
+*.idxX
 
 # Images
 *.png
