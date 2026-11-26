@@ -2,7 +2,7 @@
 *.nc
 *.xlsx
 *.grib
-*.idxX
+
 
 # Images
 *.png
@@ -35,4 +35,4 @@ Other Courses/
 BUCT DMPS 2018-2022.zip
 aerosol_function_tests.py
 hyytiala.py
-
+wind_data.grib.5b7b6.idx
