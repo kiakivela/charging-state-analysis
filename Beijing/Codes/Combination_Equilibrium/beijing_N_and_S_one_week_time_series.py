@@ -207,7 +207,7 @@ neg_i_charge = neg_i_charge.loc[:, neg_i_charge.columns >= 2.5e-9]
 
 concentrations = af.calc_conc_interp(neg_p_nais_original, 4e-9, 6e-9).squeeze()
 
-threshold = 1000
+threshold = 2000
 
 mask = concentrations > threshold
 
@@ -225,7 +225,7 @@ d0 = 1e-9
 a0 = 0.006e-6
 l = 1.2
 
-f_meas = neg_i_charge / neg_p_charge
+f_meas = neg_i_masked / neg_p_masked
 
 dp_nm = neg_p_charge.columns.to_numpy(dtype=float)
 
@@ -261,42 +261,39 @@ for diameter in dp_nm:
         - coagN[diameter]
     )
 
-f_eq = f_eq_1 - f_eq_2 + f_eq_3
+f_eq = f_eq_1 #- f_eq_2 + f_eq_3
 
 overcharge = f_meas.divide(
     f_eq,
     axis=1
 )
 
-start = "2022-03-13 00:00:00"
-end = "2022-03-20 23:59:59"
-
+start = "2020-10-15 00:00:00"
+end = "2020-10-21 23:59:59"
 overcharge = overcharge.loc[start:end]
 
 overcharge_30_min = overcharge.resample("1h").median()
 
-S_small = overcharge.loc[
+S_small = overcharge_30_min.loc[
     :,
-    (overcharge.columns >= 2.5e-9) &
-    (overcharge.columns <= 4e-9)
+    (overcharge.columns >= 4e-9) &
+    (overcharge.columns <= 6e-9)
 ]
 
 S_small_median = S_small.median(axis=1)
 
 S_large = overcharge_30_min.loc[
     :,
-    (overcharge_30_min.columns >= 4e-9) &
-    (overcharge_30_min.columns <= 6e-9)
+    (overcharge_30_min.columns >= 20e-9) &
+    (overcharge_30_min.columns <= 30e-9)
 ]
 
 S_large_median = S_large.median(axis=1)
 
-concentrations_plotting = af.calc_conc(neg_p_nais_original, 4e-9, 6e-9).squeeze()
+concentrations_plotting = concentrations.copy()
+concentrations_plotting.loc[~mask] = np.nan
 concentrations_plotting = concentrations_plotting.loc[start:end]
 concentrations_plotting = concentrations_plotting.resample("1h").median()
-
-if isinstance(concentrations_plotting, pd.DataFrame):
-    concentrations_plotting = concentrations_plotting.iloc[:, 0]
 
 fig, ax1 = plt.subplots(figsize=(12, 6))
 
@@ -311,9 +308,17 @@ fig, ax1 = plt.subplots(figsize=(12, 6))
 ax1.plot(
     S_large_median.index,
     S_large_median,
-    label="S (20–25 nm)",
+    label="S (20–30 nm)",
     linewidth=1.5,
     color = "green"
+)
+
+ax1.plot(
+    S_small_median.index,
+    S_small_median,
+    label="S (4–6 nm)",
+    linewidth=1.5,
+    color = "blue"
 )
 
 ax1.set_xlabel("Time")
@@ -343,7 +348,7 @@ ax1.legend(
     loc="upper right"
 )
 
-ax1.set_title("Peking, 2022, viikko 11")
+ax1.set_title("Peking, 2020, 15.10.-21.10.")
 #ax1.set_ylim(-0.5, 9)
 ax1.set_yscale("log")
 ax2.set_yscale("log")
@@ -351,7 +356,7 @@ ax2.set_yscale("log")
 plt.tight_layout()
 plt.savefig("beijing_N_and_S_one_week_series", bbox_inches='tight', dpi=300)
 
-# Calculate hourly changes
+"""# Calculate hourly changes
 delta_N = concentrations_plotting.diff()
 delta_S = S_large_median.diff()
 
@@ -361,10 +366,10 @@ ax1.plot(
     delta_S.index,
     delta_S,
     color="green",
-    label=r"$\Delta S$ (20–25 nm)"
+    label=r"$\\Delta S$ (20–25 nm)"
 )
 
-ax1.set_ylabel(r"$\Delta S$")
+ax1.set_ylabel(r"$\\Delta S$")
 
 ax2 = ax1.twinx()
 
@@ -372,10 +377,10 @@ ax2.plot(
     delta_N.index,
     delta_N,
     color="red",
-    label=r"$\Delta N$ (4–6 nm)"
+    label=r"$\\Delta N$ (4–6 nm)"
 )
 
-ax2.set_ylabel(r"$\Delta N$ (cm$^{-3}$)")
+ax2.set_ylabel(r"$\\Delta N$ (cm$^{-3}$)")
 
 ax1.axhline(0, color="black", linewidth=0.7)
 ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
@@ -393,4 +398,4 @@ ax1.legend(
 
 ax1.set_title("Hourly changes in N and S")
 plt.tight_layout()
-plt.savefig("beijing_delta_N_and_delta_S_one_week_series", bbox_inches='tight', dpi=300)
+plt.savefig("beijing_delta_N_and_delta_S_one_week_series", bbox_inches='tight', dpi=300)"""

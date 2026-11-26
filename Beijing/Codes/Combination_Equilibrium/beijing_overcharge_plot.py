@@ -266,7 +266,7 @@ for diameter in dp_nm:
         - coagN[diameter]
     )
 
-f_eq = f_eq_1 - f_eq_2 + f_eq_3
+f_eq = f_eq_1
 
 overcharge = f_meas.divide(
     f_eq,
@@ -305,9 +305,11 @@ im, cbar = ap.plot_aerosol_dist(
     median_diurnal,
     ax,
     norm='linear',
-
+    clim=[0.4, 1.2]
 )
-#    clim=[0.28, 0.60]
+
+ #   
+
 ax.xaxis.set_major_formatter(
     mdates.DateFormatter('%H:%M'))
 
