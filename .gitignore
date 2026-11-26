@@ -1,6 +1,7 @@
 # Scientific datasets
 *.nc
 *.xlsx
+*.grib
 
 # Images
 *.png
@@ -33,3 +34,4 @@ Other Courses/
 BUCT DMPS 2018-2022.zip
 aerosol_function_tests.py
 hyytiala.py
+
